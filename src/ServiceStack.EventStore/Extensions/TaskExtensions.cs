@@ -10,7 +10,7 @@ namespace ServiceStack.EventStore.Extensions
     /// </summary>
     internal static class TaskExtensions
     {
-        //Represents a succesfully completed Task
+        //Represents a successfully completed Task
         public static readonly Task CompletedTask = Task.FromResult(false);
     }
 }

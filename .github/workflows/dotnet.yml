@@ -19,10 +19,18 @@ jobs:
       eventstore:
         image: eventstore/eventstore:23.10.8-bookworm-slim
         env:
+          EVENTSTORE_CLUSTER_SIZE: 1
           EVENTSTORE_INSECURE: true
           EVENTSTORE_MEM_DB: true
+          EVENTSTORE_RUN_PROJECTIONS: All
+          EVENTSTORE_START_STANDARD_PROJECTIONS: true
           EVENTSTORE_ENABLE_EXTERNAL_TCP: true
           EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP: true
+          EVENTSTORE_EXT_TCP_PORT: 1113
+          EVENTSTORE_HTTP_PORT: 2113
+          EVENTSTORE_ADVERTISE_HOST_TO_CLIENT_AS: localhost
+          EVENTSTORE_ADVERTISE_TCP_PORT_TO_CLIENT_AS: 1113
+          EVENTSTORE_ADVERTISE_HTTP_PORT_TO_CLIENT_AS: 2113
         ports:
           - 1113:1113
           - 2113:2113

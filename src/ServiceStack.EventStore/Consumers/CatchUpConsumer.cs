@@ -24,7 +24,7 @@ namespace ServiceStack.EventStore.Consumers
             this.subscription = subscription;
             try
             {
-                await Task.Run(() => connection.SubscribeToStreamFrom(subscription.StreamId, StreamPosition.Start, true,
+                await Task.Run(() => connection.SubscribeToStreamFrom(subscription.StreamId, StreamPosition.Start, CatchUpSubscriptionSettings.Default,
                              async (sub, @event) => await EventAppeared(sub, @event),
                              async (sub) => await LiveProcessingStarted(sub),
                              async (sub, reason, exception) => await SubscriptionDropped(sub, reason, exception)));

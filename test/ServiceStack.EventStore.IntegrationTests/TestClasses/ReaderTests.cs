@@ -7,7 +7,6 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
     using System.Linq;
     using System.Threading.Tasks;
     using Exceptions;
-    using FluentAssertions;
     using global::EventStore.ClientAPI;
     using Repository;
     using TestDomain;
@@ -15,20 +14,20 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
     using Xunit.Abstractions;
     using ReadDirection = Repository.ReadDirection;
 
-    [Collection("ServiceStackHostCollection")]
+    [Collection(EventStoreCollection.Name)]
     [Trait("Category", "Integration")]
     public class ReaderTests
     {
         private readonly IEventStoreRepository eventStore;
         private readonly ITestOutputHelper testOutput;
 
-        public ReaderTests(ServiceStackHostFixture fixture, ITestOutputHelper output)
+        public ReaderTests(EventStoreFixture fixture, ITestOutputHelper output)
         {
-            eventStore = fixture.AppHost.Container.Resolve<IEventStoreRepository>();
+            eventStore = fixture.EventStore;
             testOutput = output;
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task CanReadSingleEventFromCorrectPositionInStream()
         {
             var streamName = $"ReaderTestStream-{Guid.NewGuid()}";
@@ -38,16 +37,16 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
             await eventStore.PublishAsync(new LastPolled { Time = DateTime.UtcNow, Sequence = "End" }, streamName).ConfigureAwait(false);
 
             var firstEvent = await eventStore.ReadEventAsync<LastPolled>(streamName, WhereInStream.Start).ConfigureAwait(false);
-            firstEvent.Sequence.Should().Be("Start");
+            Assert.Equal("Start", firstEvent.Sequence);
 
             var lastEvent = await eventStore.ReadEventAsync<LastPolled>(streamName, WhereInStream.End).ConfigureAwait(false);
-            lastEvent.Sequence.Should().Be("End");
+            Assert.Equal("End", lastEvent.Sequence);
 
             var middleEvent = await eventStore.ReadEventAsync<LastPolled>(streamName, 1).ConfigureAwait(false);
-            middleEvent.Sequence.Should().Be("Middle");
+            Assert.Equal("Middle", middleEvent.Sequence);
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task ReadSingleEventThrowsEventNotFoundException()
         {
             var streamName = $"ReaderTestStream-{Guid.NewGuid()}";
@@ -57,7 +56,7 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
                     await eventStore.ReadEventAsync<LastPolled>(streamName, WhereInStream.Start).ConfigureAwait(false));
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task CanReadStreamForwardsAsStronglyTypedObjects()
         {
             var streamName = $"ReaderTestStream-{Guid.NewGuid()}";
@@ -75,15 +74,14 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
             var eventSlice = await eventStore.ReadSliceFromStreamAsync<LastPolled>(streamName, ReadDirection.Forwards, StreamPosition.Start, SliceSize.Max).ConfigureAwait(false);
             var events = eventSlice.ToArray();
 
-            events.Should().HaveCount(4);
-            events.Should().BeOfType<LastPolled[]>();
-            events[0].Time.Should().BeSameDateAs(firstDate);
-            events[1].Time.Should().BeSameDateAs(secondDate);
-            events[2].Time.Should().BeSameDateAs(thirdDate);
-            events[3].Time.Should().BeSameDateAs(fourthDate);
+            Assert.Equal(4, events.Length);
+            Assert.Equal(firstDate.Date, events[0].Time.Date);
+            Assert.Equal(secondDate.Date, events[1].Time.Date);
+            Assert.Equal(thirdDate.Date, events[2].Time.Date);
+            Assert.Equal(fourthDate.Date, events[3].Time.Date);
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task CanReadEventBackwardFromStreamAsStronglyTypedObject()
         {
             var streamName = $"ReaderTestStream-{Guid.NewGuid()}";
@@ -101,12 +99,11 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
             var eventSlice = await eventStore.ReadSliceFromStreamAsync<LastPolled>(streamName, ReadDirection.Backwards, StreamPosition.End, SliceSize.Max).ConfigureAwait(false);
             var events = eventSlice.ToArray();
 
-            events.Should().HaveCount(4);
-            events.Should().BeOfType<LastPolled[]>();
-            events[0].Time.Should().BeSameDateAs(fourthDate);
-            events[1].Time.Should().BeSameDateAs(thirdDate);
-            events[2].Time.Should().BeSameDateAs(secondDate);
-            events[3].Time.Should().BeSameDateAs(firstDate);
+            Assert.Equal(4, events.Length);
+            Assert.Equal(fourthDate.Date, events[0].Time.Date);
+            Assert.Equal(thirdDate.Date, events[1].Time.Date);
+            Assert.Equal(secondDate.Date, events[2].Time.Date);
+            Assert.Equal(firstDate.Date, events[3].Time.Date);
         }
     }
 }

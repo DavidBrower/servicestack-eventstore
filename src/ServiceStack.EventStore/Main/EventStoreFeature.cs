@@ -56,6 +56,29 @@ namespace ServiceStack.EventStore.Main
             this.connection = connection;
         }
 
+        public EventStoreFeature(
+            IEventStoreConnection connection,
+            SubscriptionSettings subscriptionSettings,
+            params Assembly[] assembliesWithEvents)
+            : this(subscriptionSettings, assembliesWithEvents)
+        {
+            this.connection = connection;
+        }
+
+        public EventStoreFeature(
+            EventStoreConnectionSettings connectionSettings,
+            params Assembly[] assembliesWithEvents)
+            : this(EventStoreConnection.Create(connectionSettings.GetConnectionString()), assembliesWithEvents) { }
+
+        public EventStoreFeature(
+            EventStoreConnectionSettings connectionSettings,
+            SubscriptionSettings subscriptionSettings,
+            params Assembly[] assembliesWithEvents)
+            : this(
+                EventStoreConnection.Create(connectionSettings.GetConnectionString()),
+                subscriptionSettings,
+                assembliesWithEvents) { }
+
         public async void Register(IAppHost appHost)
         {
             appSettings = appHost.AppSettings ?? new AppSettings();

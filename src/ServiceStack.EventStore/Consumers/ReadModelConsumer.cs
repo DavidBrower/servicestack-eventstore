@@ -25,7 +25,9 @@ namespace ServiceStack.EventStore.Consumers
 
             try
             {
-                await Task.Run(() => connection.SubscribeToAllFrom(Position.Start, true, EventAppeared, LiveProcessingStarted, SubscriptionDropped));
+                await Task.Run(() => connection.SubscribeToAllFrom(Position.Start, CatchUpSubscriptionSettings.Default, EventAppeared, LiveProcessingStarted,
+                    async (eventStoreSubscription, dropReason, exception) =>
+                        await SubscriptionDropped(eventStoreSubscription, dropReason, exception)));
             }
             catch (Exception exception)
             {
@@ -33,13 +35,13 @@ namespace ServiceStack.EventStore.Consumers
             }
         }
 
-        private async void SubscriptionDropped(EventStoreCatchUpSubscription eventStoreCatchUpSubscription, SubscriptionDropReason subscriptionDropReason, Exception exception) => 
+        private async Task SubscriptionDropped(EventStoreCatchUpSubscription eventStoreCatchUpSubscription, SubscriptionDropReason subscriptionDropReason, Exception exception) =>
             await HandleDroppedSubscription(new DroppedSubscription(subscription, exception.Message, subscriptionDropReason));
 
         private void LiveProcessingStarted(EventStoreCatchUpSubscription eventStoreCatchUpSubscription) => 
             log.Info("Read model now caught-up");
 
-        private async void EventAppeared(EventStoreCatchUpSubscription eventStoreCatchUpSubscription, ResolvedEvent resolvedEvent) => 
+        private async Task EventAppeared(EventStoreCatchUpSubscription eventStoreCatchUpSubscription, ResolvedEvent resolvedEvent) =>
             await Dispatch(resolvedEvent);
     }
 }

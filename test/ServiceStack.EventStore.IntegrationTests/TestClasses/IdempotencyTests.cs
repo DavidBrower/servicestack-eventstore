@@ -7,7 +7,6 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
-    using FluentAssertions;
     using global::EventStore.ClientAPI;
     using Repository;
     using TestDomain;
@@ -15,7 +14,7 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
     using Xunit.Abstractions;
     using ReadDirection = Repository.ReadDirection;
 
-    [Collection("ServiceStackHostCollection")]
+    [Collection(EventStoreCollection.Name)]
     [Trait("Category", "Integration")]
     public class IdempotencyTests
     {
@@ -23,13 +22,13 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
 
         private readonly ITestOutputHelper testOutput;
 
-        public IdempotencyTests(ServiceStackHostFixture fixture, ITestOutputHelper output)
+        public IdempotencyTests(EventStoreFixture fixture, ITestOutputHelper output)
         {
-            eventStore = fixture.AppHost.Container.Resolve<IEventStoreRepository>();
+            eventStore = fixture.EventStore;
             testOutput = output;
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task SameEventIsIdempotent()
         {
             var streamName = $"IdempotentTestStream-{Guid.NewGuid()}";
@@ -41,12 +40,12 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
 
             var streamEvents = await eventStore.ReadSliceFromStreamAsync(streamName, ReadDirection.Forwards, StreamPosition.Start, 200);
 
-            streamEvents.Count().Should().Be(1);
+            Assert.Single(streamEvents);
 
             testOutput.WriteLine($"1 event idempotently written to {streamName}");
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task SimilarEventWithDifferentTimeStampIsNotIdempotent()
         {
             var product = new Product {ProductCode = "MN2400" };
@@ -62,7 +61,7 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
 
             var streamEvents = await eventStore.ReadSliceFromStreamAsync(streamName, ReadDirection.Forwards, StreamPosition.Start, 200).ConfigureAwait(false);
 
-            streamEvents.Count().Should().Be(2);
+            Assert.Equal(2, streamEvents.Count());
 
             testOutput.WriteLine($"2 events succesfully written to {streamName}");
         }

@@ -1,0 +1,66 @@
+name: .NET
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EVENTSTORE_CONNECTION_STRING: 'ConnectTo=tcp://localhost:1113;UseSslConnection=false;'
+
+    services:
+      eventstore:
+        image: eventstore/eventstore:23.10.8-bookworm-slim
+        env:
+          EVENTSTORE_CLUSTER_SIZE: 1
+          EVENTSTORE_INSECURE: true
+          EVENTSTORE_MEM_DB: true
+          EVENTSTORE_RUN_PROJECTIONS: All
+          EVENTSTORE_START_STANDARD_PROJECTIONS: true
+          EVENTSTORE_ENABLE_EXTERNAL_TCP: true
+          EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP: true
+          EVENTSTORE_EXT_TCP_PORT: 1113
+          EVENTSTORE_HTTP_PORT: 2113
+          EVENTSTORE_ADVERTISE_HOST_TO_CLIENT_AS: localhost
+          EVENTSTORE_ADVERTISE_TCP_PORT_TO_CLIENT_AS: 1113
+          EVENTSTORE_ADVERTISE_HTTP_PORT_TO_CLIENT_AS: 2113
+        ports:
+          - 1113:1113
+          - 2113:2113
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Wait for EventStoreDB
+        run: timeout 60s bash -c 'until curl --fail --silent http://localhost:2113/health/live; do sleep 2; done'
+
+      - name: Restore
+        run: dotnet restore src/ServiceStack.EventStore.sln
+
+      - name: Build library and tests
+        run: dotnet build src/ServiceStack.EventStore.sln --configuration Release --no-restore
+
+      - name: Build samples
+        run: |
+          dotnet build samples/Samples.ReadModel/Samples.ReadModel/Samples.ReadModel.csproj --configuration Release
+          dotnet build samples/Samples.WriteModel/Samples.WriteModel/Samples.WriteModel.csproj --configuration Release
+
+      - name: Test
+        run: dotnet test test/ServiceStack.EventStore.IntegrationTests/ServiceStack.EventStore.IntegrationTests.csproj --configuration Release --no-build
+
+      - name: Check vulnerable packages
+        run: |
+          dotnet list src/ServiceStack.EventStore/ServiceStack.EventStore.csproj package --vulnerable --include-transitive
+          dotnet list test/ServiceStack.EventStore.IntegrationTests/ServiceStack.EventStore.IntegrationTests.csproj package --vulnerable --include-transitive

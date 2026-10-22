@@ -9,26 +9,26 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
     using Xunit.Abstractions;
     using System.Threading.Tasks;
 
-    [Collection("ServiceStackHostCollection")]
+    [Collection(EventStoreCollection.Name)]
     [Trait("Category", "Integration")]
     public class PublisherTests
     {
         private readonly IEventStoreRepository eventStore;
         private readonly ITestOutputHelper testOutput;
 
-        public PublisherTests(ServiceStackHostFixture fixture, ITestOutputHelper output)
+        public PublisherTests(EventStoreFixture fixture, ITestOutputHelper output)
         {
-            eventStore = fixture.AppHost.Container.Resolve<IEventStoreRepository>();
+            eventStore = fixture.EventStore;
             testOutput = output;
         }
 
-        [Fact]
+        [EventStoreFact]
         public Task CanPublishEvent()
         {
             return eventStore.PublishAsync(new ServiceHasReachedWarningState(DateTime.UtcNow), "");
         }
 
-        [Fact]
+        [EventStoreFact]
         public Task CanPublishEventWithHeaders()
         {
             return eventStore.PublishAsync(new ServiceHasReachedWarningState(DateTime.UtcNow), "stream", headers =>

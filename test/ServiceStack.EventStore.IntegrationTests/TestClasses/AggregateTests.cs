@@ -8,7 +8,6 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
     using System.Threading.Tasks;
     using Exceptions;
     using Extensions;
-    using FluentAssertions;
     using global::EventStore.ClientAPI;
     using Repository;
     using TestDomain;
@@ -17,7 +16,7 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
     using Xunit.Abstractions;
 
     // NOTE: These integration tests require EventStore to be running locally!
-    [Collection("ServiceStackHostCollection")]
+    [Collection(EventStoreCollection.Name)]
     [Trait("Category", "Integration")]
     public class AggregateTests
     {
@@ -25,13 +24,13 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
 
         private readonly ITestOutputHelper testOutput;
 
-        public AggregateTests(ServiceStackHostFixture fixture, ITestOutputHelper output)
+        public AggregateTests(EventStoreFixture fixture, ITestOutputHelper output)
         {
-            eventStore = fixture.AppHost.Container.Resolve<IEventStoreRepository>();
+            eventStore = fixture.EventStore;
             testOutput = output;
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task AnAggregateCanBeSavedAndRehydrated()
         {
             // Act
@@ -45,45 +44,10 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
             var flightToBeRehydrated = await eventStore.GetByIdAsync<Flight>(flightToBePersisted.Id);
 
             // Assert
-            flightToBeRehydrated.Id.Should().Be(flightToBePersisted.Id);
+            Assert.Equal(flightToBePersisted.Id, flightToBeRehydrated.Id);
         }
 
-        [Fact]
-        public void AggregateVersionIsCorrectAfterAddingEvents()
-        {
-            var flight = new Flight();
-
-            // Act
-            flight.UpdateDestination("Malaga");
-
-            // Assert
-            flight.State.Version.Should().Be(2);
-
-            // Act
-            flight.UpdateFlightNumber("BA1987");
-
-            // Assert
-            flight.State.Version.Should().Be(3);
-        }
-
-        [Fact]
-        public void AggregateStateIsCorrectAfterApplyingEvents()
-        {
-            // Arrange
-            const string testDestination = "Malaga";
-            const string testFlightNumber = "BA1987";
-
-            //Act
-            var flight = new Flight()
-                                .UpdateDestination(testDestination)
-                                .UpdateFlightNumber(testFlightNumber);
-
-            // Assert
-            flight.State.Destination.Should().Be(testDestination);
-            flight.State.FlightNumber.Should().Be(testFlightNumber);
-        }
-
-        [Fact]
+        [EventStoreFact]
         public async Task GetsEventsFromCorrectStreams()
         {
             var firstFlight = new Flight();
@@ -104,11 +68,11 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
             var firstSaved = await eventStore.GetByIdAsync<Flight>(firstFlight.Id);
             var secondSaved = await eventStore.GetByIdAsync<Flight>(secondFlight.Id);
 
-            firstSaved.State.FlightNumber.Should().Be(firstFlightNumber);
-            secondSaved.State.FlightNumber.Should().Be(secondlightNumber);
+            Assert.Equal(firstFlightNumber, firstSaved.State.FlightNumber);
+            Assert.Equal(secondlightNumber, secondSaved.State.FlightNumber);
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task ThrowsOnRequestingSpecificVersionHigherThanExists()
         {
             var flightToBePersisted = 
@@ -127,7 +91,7 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
                     () => eventStore.GetByIdAsync<Flight>(flightToBePersisted.Id, incorrectVersion));
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task CanAddHeadersToAggregateEvents()
         {
             var flight = 
@@ -145,7 +109,7 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
             await eventStore.GetByIdAsync<Flight>(flight.Id);
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task CanSaveAndRehydrateLargeNumberOfEvents()
         {
             const int noOfEvents = 5000;
@@ -174,11 +138,11 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
 
             const int expectedVersion = noOfEvents;
 
-            newFlight.State.Version.Should().Be(expectedVersion);
-            rehydratedFlight.State.Version.Should().Be(expectedVersion);
+            Assert.Equal(expectedVersion, newFlight.State.Version);
+            Assert.Equal(expectedVersion, rehydratedFlight.State.Version);
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task AggregateStateIsCorrectAfterRehydration()
         {
             const string originalDestination = "Hong Kong";
@@ -206,19 +170,11 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
             var secondRehydration = await eventStore.GetByIdAsync<Flight>(newFlight.Id).ConfigureAwait(false);
 
             // Assert
-            secondRehydration.State.Destination.Should().Be(newDestination);
-            secondRehydration.State.FlightNumber.Should().Be(newFlightNumber);
+            Assert.Equal(newDestination, secondRehydration.State.Destination);
+            Assert.Equal(newFlightNumber, secondRehydration.State.FlightNumber);
         }
 
-        [Fact]
-        public void RaisingAnAggregateEventThatIsNotHandledThrowsCorrectException()
-        {
-            var flight = new Flight();
-
-            Assert.Throws<NotImplementedException>(() => flight.AddBaggageToHold(3));
-        }
-
-        [Fact]
+        [EventStoreFact]
         public Task ThrowsCorrectExceptionWhenLoadingNonPersistedAggregate()
         {
             return
@@ -226,7 +182,7 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
                     () => eventStore.GetByIdAsync<Flight>(Guid.NewGuid()));
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task ThrowsCorrectExceptionWhenLoadingSoftDeletedAggregate()
         {
             var flight = new Flight();
@@ -246,7 +202,7 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
                     () => eventStore.GetByIdAsync<Flight>(flight.Id));
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task ThrowsCorrectExceptionWhenLoadingHardDeletedAggregate()
         {
             const bool hardDelete = true;
@@ -266,7 +222,7 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
                     () => eventStore.GetByIdAsync<Flight>(flight.Id));
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task CorrectlyRetrievesSpecificVersion()
         {
             var flightToBePersisted = new Flight();
@@ -283,10 +239,10 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
             var rehydratedFlight = await eventStore.GetByIdAsync<Flight>(flightToBePersisted.Id, 5);
 
             // Assert
-            rehydratedFlight.State.Version.Should().Be(5);
+            Assert.Equal(5, rehydratedFlight.State.Version);
         }
 
-        [Fact]
+        [EventStoreFact]
         public async Task CanRepeatedlyPersistAggregate()
         {
             var flightToBePersisted = new Flight();

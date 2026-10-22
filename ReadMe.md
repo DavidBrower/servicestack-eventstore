@@ -1,6 +1,6 @@
 # ServiceStack.EventStore #
 
-[![Build status](https://ci.appveyor.com/api/projects/status/v9qd6kso0bkc5spf/branch/master?svg=true)](https://ci.appveyor.com/project/wwwlicious/servicestack-eventstore/branch/master)
+[![.NET](https://github.com/DavidBrower/servicestack-eventstore/actions/workflows/dotnet.yml/badge.svg)](https://github.com/DavidBrower/servicestack-eventstore/actions/workflows/dotnet.yml)
 [![NuGet version](https://badge.fury.io/nu/ServiceStack.EventStore.svg)](https://badge.fury.io/nu/ServiceStack.EventStore)
 
 A plugin for [ServiceStack](https://servicestack.net/) that provides a [message gateway](http://www.enterpriseintegrationpatterns.com/patterns/messaging/MessagingGateway.html) to [EventStore](https://geteventstore.com/) streams.
@@ -13,7 +13,11 @@ By adding this plugin to an application, such as a Windows Service, the applicat
 
 ## Requirements ##
 
-An instance of the EventStore server should be running on the network. Please follow the [installation](http://docs.geteventstore.com/introduction/) instructions provided by EventStore.
+The library and samples target .NET 10. Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) before building the repository.
+
+An EventStoreDB server with the legacy TCP interface enabled should be running on the network for integration testing and for applications that use this version of the client. Please follow the [EventStoreDB installation instructions](https://www.eventstore.com/eventstoredb).
+
+This project still uses the `EventStore.Client` legacy TCP API. EventStoreDB 23.10 is the final server release with built-in support for that protocol. Moving to the current gRPC client is a separate breaking API migration.
 
 You can verify that EventStore is running by browsing to port <a href="http://localhost:2113/">**2113**</a> on the machine running the EventStore server.
 
@@ -21,7 +25,7 @@ You can verify that EventStore is running by browsing to port <a href="http://lo
 
 Install the package from [Nuget](https://www.nuget.org/packages/ServiceStack.EventStore/)
 ```bash
-Install-Package ServiceStack.EventStore
+dotnet add package ServiceStack.EventStore
 ```
 
 ### Setting up a Connection to EventStore ###
@@ -30,34 +34,42 @@ Add the following code to the `Configure` method in the `AppHost` class (this cl
 ```csharp
 public override void Configure(Container container)
 {
-    //Register the EventStore plugin with ServiceStack, passing in 
-    //the assembly that contains the CLR events (see below)
-    Plugins.Add(new EventStoreFeature(typeof(ClrEvent).Assembly)); 
-    //Optionally register the Metadata plugin
+    var connectionSettings = new EventStoreConnectionSettings()
+        .UserName("admin")
+        .Password("changeit")
+        .TcpEndpoint("localhost:1113")
+        .HttpEndpoint("localhost:2113");
+
+    // Register the EventStore plugin and identify the assembly containing the CLR events.
+    Plugins.Add(new EventStoreFeature(connectionSettings, typeof(ClrEvent).Assembly));
+
+    // Optionally provide a link to the EventStoreDB admin UI.
     Plugins.Add(new MetadataFeature());
 }
 ```
-Then, add the following settings to the `App.config` file of the root project:
 
-```xml
-<configuration>
-    <startup> 
-        <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.5" />
-    </startup>
-    <appSettings>
-      <add key="ServiceStack.Plugins.EventStore.TcpEndPoint" value="localhost:1113"/>
-      <add key="ServiceStack.Plugins.EventStore.HttpEndPoint" value="localhost:2113"/>
-      <add key="ServiceStack.Plugins.EventStore.UserName" value="admin"/>
-      <add key="ServiceStack.Plugins.EventStore.Password" value="changeit"/>
-    </appSettings>
-</configuration>
-```
-
-It is also possible to pass in a ready-made instance of `IEventStoreConnection` in the constructor of the `EventStoreFeature`. This has been made available to facilitate the integration test suite that now uses the EventStore [Embedded Client](http://docs.geteventstore.com/dotnet-api/4.0.0/embedded-client/) and which passes in an instance of `EmbeddedEventStoreConnection`. 
+It is also possible to pass a ready-made `IEventStoreConnection` to the `EventStoreFeature` constructor.
 
 **Please note** that this sample assumes that:
 
-- EventStore is running on your **local host**. **1113** is the TCP port at which you can listen for events and **2113** is the HTTP port. These are the default ports that EventStore uses.
+- EventStoreDB is running on your **local host**. The samples expect the legacy TCP interface on port **1113** and the HTTP endpoint on port **2113**.
+
+## Building and testing ##
+
+Restore, build, and run the tests with the .NET CLI:
+
+```bash
+dotnet restore src/ServiceStack.EventStore.sln
+dotnet build src/ServiceStack.EventStore.sln --configuration Release --no-restore
+dotnet test test/ServiceStack.EventStore.IntegrationTests/ServiceStack.EventStore.IntegrationTests.csproj --configuration Release --no-build
+```
+
+The aggregate unit tests run without external services. Integration tests require an EventStoreDB node and are skipped unless `EVENTSTORE_CONNECTION_STRING` is set. For example:
+
+```bash
+export EVENTSTORE_CONNECTION_STRING='ConnectTo=tcp://admin:changeit@localhost:1113;'
+dotnet test test/ServiceStack.EventStore.IntegrationTests/ServiceStack.EventStore.IntegrationTests.csproj --configuration Release
+```
 
 ### Subscribing to Named Streams ###
 

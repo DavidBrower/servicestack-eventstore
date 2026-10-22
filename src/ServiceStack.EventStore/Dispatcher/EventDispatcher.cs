@@ -46,7 +46,7 @@ namespace ServiceStack.EventStore.Dispatcher
                     var request = new BasicRequest();
                     request.Headers.AddAll(headers);
 
-                    await HostContext.ServiceController.ExecuteAsync(typedEvent, request,true);
+                    await HostContext.ServiceController.ExecuteAsync(typedEvent, request);
                 }
                 catch (Exception e)
                 {

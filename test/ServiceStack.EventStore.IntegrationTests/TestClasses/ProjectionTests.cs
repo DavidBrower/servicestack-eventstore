@@ -9,16 +9,16 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
     using Xunit;
     using Xunit.Abstractions;
 
-    [Collection("ServiceStackHostCollection")]
+    [Collection(EventStoreCollection.Name)]
     [Trait("Category", "Integration")]
     public class ProjectionTests
     {
         private readonly IEventStoreRepository eventStore;
         private readonly ITestOutputHelper testOutput;
 
-        public ProjectionTests(ServiceStackHostFixture fixture, ITestOutputHelper output)
+        public ProjectionTests(EventStoreFixture fixture, ITestOutputHelper output)
         {
-            eventStore = fixture.AppHost.Container.Resolve<IEventStoreRepository>();
+            eventStore = fixture.EventStore;
             testOutput = output;
         }
     }

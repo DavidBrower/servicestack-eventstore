@@ -6,14 +6,12 @@ using ServiceStack.EventStore.IntegrationTests.TestDomain;
 
 namespace ServiceStack.EventStore.IntegrationTests.TestClasses
 {
-    using FluentAssertions;
     using Repository;
     using Xunit;
     using Xunit.Abstractions;
     using System.Threading.Tasks;
-    using Funq;
 
-    [Collection("ServiceStackHostCollection")]
+    [Collection(EventStoreCollection.Name)]
     [Trait("Category", "Integration")]
     public class EventHandlerTests 
     {
@@ -21,12 +19,10 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
         private readonly ITestOutputHelper testOutput;
         private bool eventFired;
 
-        public EventHandlerTests(ITestOutputHelper testOutput, ServiceStackHostFixture fixture)
+        public EventHandlerTests(ITestOutputHelper testOutput, EventStoreFixture fixture)
         {
             this.testOutput = testOutput;
-            eventStore = fixture.AppHost.Container.Resolve<IEventStoreRepository>();
-            //fixture.AppHost.Container.RegisterAutoWired<VolatileConsumer>();
-            fixture.AppHost.Container.Register(c => this).ReusedWithin(ReuseScope.Default);
+            eventStore = fixture.EventStore;
         }
 
         // todo: how best to test handling events and streams?
@@ -37,7 +33,7 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
             await eventStore.PublishAsync(weeGreenMenLanded, "");
             await Task.Delay(10000);
 
-            eventFired.Should().BeTrue();
+            Assert.True(eventFired);
         }
 
         public void Handle(WeeGreenMenLanded @event)

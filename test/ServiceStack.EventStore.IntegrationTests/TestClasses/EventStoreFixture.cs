@@ -5,6 +5,7 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
 {
     using System;
     using global::EventStore.ClientAPI;
+    using Main;
     using Repository;
 
     public sealed class EventStoreFixture : IDisposable
@@ -30,6 +31,7 @@ namespace ServiceStack.EventStore.IntegrationTests.TestClasses
 
                 connection = EventStoreConnection.Create(connectionString);
                 connection.ConnectAsync().GetAwaiter().GetResult();
+                _ = new EventStoreFeature(connection, typeof(EventStoreFixture).Assembly);
                 eventStore = new EventStoreRepository(connection);
 
                 return eventStore;

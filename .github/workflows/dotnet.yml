@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      EVENTSTORE_CONNECTION_STRING: 'ConnectTo=tcp://localhost:1113;'
+      EVENTSTORE_CONNECTION_STRING: 'ConnectTo=tcp://localhost:1113;UseSslConnection=false;'
 
     services:
       eventstore:
